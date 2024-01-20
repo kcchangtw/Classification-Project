@@ -1,0 +1,83 @@
+---
+title: "Naive Bayes Classifier (Iris Data)"
+output: html_document
+date: "2024-01-01"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Code for Naive Bayes Classifier Using Iris Data
+
+```{r}
+# Load Iris dataset
+data(iris)
+
+# Function to split the dataset into training and testing sets
+split_data <- function(data, split_ratio = 0.7) {
+  set.seed(2024)  # Set seed for reproducibility
+  indices <- sample(1:nrow(data), size = round(split_ratio * nrow(data)))
+  train_data <- data[indices, ]
+  test_data <- data[-indices, ]
+  return(list(train_data = train_data, test_data = test_data))
+}
+
+# Function to calculate class probabilities
+calculate_class_probabilities <- function(data) {
+  class_probabilities <- table(data$Species) / nrow(data)
+  return(class_probabilities)
+}
+
+# Function to calculate mean and standard deviation for each attribute and class
+calculate_means_and_sds <- function(data) {
+  means <- lapply(split(data[, -5], data$Species), function(x) colMeans(x))
+  sds <- lapply(split(data[, -5], data$Species), function(x) apply(x, 2, sd))
+  return(list(means = means, sds = sds))
+}
+
+# Function to calculate Gaussian probability density function
+calculate_probability <- function(x, mean, sd) {
+  exponent <- exp(-((x - mean)^2 / (2 * sd^2)))
+  return((1 / (sqrt(2 * pi) * sd)) * exponent)
+}
+
+# Function to predict class for a given instance
+predict_class <- function(instance, class_probabilities, means, sds) {
+  name_species <- names(class_probabilities)
+  mean_name_species <- names(means)
+  sd_name_species <- names(sds)
+  probabilities <- numeric(length(name_species))
+  
+  for (i in seq_along(class_probabilities)) {
+    probabilities[i] <- log(class_probabilities[i])
+    mean_name_species_index <- which(mean_name_species == name_species[i])
+    sd_name_species_index <- which(sd_name_species == name_species[i])    
+    for (j in seq_along(instance)) {
+      probabilities[i] <- probabilities[i] + log(calculate_probability(instance[j], means[[mean_name_species_index]][j], sds[[sd_name_species_index]][j]))
+    }
+  }
+  
+  return(name_species[which.max(probabilities)])
+}
+
+# Implement Naive Bayes classification
+
+# Split the data
+split_data <- split_data(iris, split_ratio = 0.7)
+train_data <- split_data$train_data
+test_data <- split_data$test_data
+
+# Calculate class probabilities, means, and standard deviations
+class_probabilities <- calculate_class_probabilities(train_data)
+means_and_sds <- calculate_means_and_sds(train_data)
+
+# Make predictions on the test set
+predictions <- sapply(1:nrow(test_data), function(i) {
+  predict_class(as.numeric(test_data[i, -5]), class_probabilities, means_and_sds$means, means_and_sds$sds)
+})
+
+# Compare predictions to actual values
+accuracy <- sum(predictions == test_data$Species) / nrow(test_data)
+cat("Accuracy:", round(accuracy * 100, 2) , "%\n")
+```
